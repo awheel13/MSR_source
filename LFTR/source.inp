@@ -1,0 +1,185 @@
+% source term simple MSR
+/*This is a  model of the:
+Molten Salt Reactor source term paper
+Grad Students: Alex Wheeler, Vik Singh
+Advisor: Dr. Laurence Miller, Dr. Ondrej Chvala
+*/
+
+%______________surface definitions__________________________________
+surf 201 hexxc 0   0   7.064      % blanket salt
+surf 202 hexxc 0   0   6.826      % graphite modertor
+surf 203 cyl   0   0   3.453      % outer ring of salt
+surf 204 cyl   0   0   2.858      % OD of graphite ring
+surf 205 cyl   0   0   1.905      % ID of graphite ring
+
+%______________cell definitions_____________________________________
+cell 1   0  FLiBeU    -205        % inner fuel channel
+cell 5   0  graphite   205 -204   % inner ring of grphite
+cell 11  0  FLiBeU     204 -203   % outer fuel channel
+cell 31  0  graphite   203 -202   % moderator 
+cell 41  0  blanket    202 -201   % blanket salt 
+cell 99  0  outside    201        % graveyard 
+
+%______________material definitions_________________________________
+% LiF-BeF2-UF4
+mat FLiBeU -2.0341899999999997  burn 1 vol 1e6
+rgb 130 32 144
+3006.09c   -0.000725     %  Li6
+3007.09c  -14.495960     %  Li7
+4009.09c  -8.508748      %  Be9
+9019.09c  -75.588074     %  F19
+92233.09c  -1.265844     %  U233
+92234.09c  -0.140649     %  U234
+
+mat blanket -4.43696 tmp 973.15 vol 1e6
+rgb 0 157 254
+3006.09c   -0.000243     %  Li6
+3007.09c   -4.855845     %  Li7
+4009.09c  -0.175712      %  Be9
+9019.09c  -33.892970     %  F19
+90232.09c -61.052512     %  Th232
+91233.09c  -0.022718     %  Pa233
+
+%  NUCLEAR GRAPHITE: Natural concentration of carbon
+%  DENSITY: 1.82 G/CC
+mat graphite -1.82 moder graph 6000
+rgb 130 130 130
+6000.09c 99.99982
+5011.09c 0.00015
+5010.09c 3e-05
+
+%  THERMAL SCATTERING LIBRARY FOR GRAPHITE
+therm graph gre7.08t
+
+% boundary condition
+set bc 3
+
+set pop 10000 250 50
+set acelib "sss_endfb7u.sssdir"
+set declib "sss_endfb7.dec"
+set nfylib "sss_endfb7.nfy"
+
+% analog reaction rate
+set arr 2
+
+%plot 3 1500 1500
+%mesh 3 1500 150
+
+%___________Reprocessing/depletion___________
+%Firstly, you need some extra materials to do depletion and reprocessing correctly.
+
+%stockpile of extra U
+mat U_stock -2.0341899999999997 burn 1 vol 1e8
+3006.09c   -0.000725     %  Li6
+3007.09c  -14.495960     %  Li7
+4009.09c  -8.508748      %  Be9
+9019.09c  -75.588074     %  F19
+92233.09c  -1.406493     %  U233
+
+%tanks for offgases
+mat offgastankcore 0.0007 burn 1 vol 1e6
+2004.09c 1
+
+%tanks for noblemetals
+mat noblemetalcore 0.0 burn 1 vol 1e6
+
+
+%tanks for lanthanides
+mat lanthtankcore 0.0 burn 1 vol 1e6
+
+
+%tanks for alkines and halogens
+mat alkhaltankcore 0.0 burn 1 vol 1e6
+
+%tank for overflow
+mat overflow 0.0 burn 1 vol 1e8
+
+%_______mass flow definitions______
+
+mflow U_in
+all 3.0025e-9
+
+mflow offgasratecore
+Ne 1e-2
+Ar 1e-2
+He 1e-2
+Kr 1e-2
+Xe 1e-2
+Rn 1e-2
+
+mflow offnoblecore
+Ru 1e-2
+Rh 1e-2
+Pd 1e-2
+Ag 1e-2
+Os 1e-2
+Ir 1e-2
+Pt 1e-2
+Au 1e-2
+Mo 1e-2
+Nb 1e-2
+Hf 1e-2
+
+mflow offlanthcore
+La 1e-4
+Ce 1e-4
+Pr 1e-4
+Nd 1e-4
+Pm 1e-4
+Sm 1e-4
+Eu 1e-4
+Gd 1e-4
+Tb 1e-4
+Dy 1e-4
+Ho 1e-4
+Er 1e-4
+Tm 1e-4
+Yb 1e-4
+Lu 1e-4
+
+
+mflow offalkhalcore
+Rb 1e-4
+Cs 1e-4
+Sr 1e-4
+Ba 1e-4
+Br 1e-4
+I  1e-4
+
+mflow over
+all 3.0025e-07 % 100
+
+plot 3 2500 2500
+
+set pcc 0 %predictor-corrector must be turned off to use depletion
+set gcu -1 %turning off group constant generation hastens the calculation
+set depmtx 1 %dumps depletion matrices if needed. should be one per burnt material.
+
+%syntax:
+% rc <from_mat> <to_mat> <mflow> <setting> where "setting" is either 0, 1 or 2.
+
+rep source_rep
+rc U_stock FLiBeU U_in 0
+rc FLiBeU offgastankcore offgasratecore 1
+rc FLiBeU noblemetalcore offnoblecore 1
+rc FLiBeU lanthtankcore offlanthcore 1
+rc FLiBeU alkhaltankcore offalkhalcore 1
+rc FLiBeU overflow over 1
+
+set printm 1 %prints out isotopic compositions of burnt materials over depletion
+set powdens 2E-2 % power density in [kW/g] 
+
+dep
+pro source_rep
+daystep
+0.0208 0.0208 %7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7
+%7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7
+% 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7
+%burn up for one year
+
+set inventory
+1
+86
+fp
+lanthanides
+actinides

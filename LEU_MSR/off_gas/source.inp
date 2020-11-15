@@ -1,0 +1,123 @@
+% source term simple MSR
+/*This is a  model of the:
+Molten Salt Reactor source term paper
+Grad Students: Alex Wheeler, Vik Singh
+Advisor: Dr. Laurence Miller, Dr. Ondrej Chvala
+*/
+
+%______________surface definitions__________________________________
+surf 201 hexxc 0   0   7.5	     % HEX FOR GRAPHITE
+surf 202 cyl   0   0   2.7	 % hole for molten salt
+
+%______________cell definitions_____________________________________
+cell 11  0  FLiBeU    -202        % inner fuel channel
+cell 31  0  graphite   202 -201   % moderator
+cell 99  0  outside    201        % graveyard
+
+%______________material definitions_________________________________
+% LiF-BeF2-UF4
+mat FLiBeU -3.353 burn 1 vol 1e8
+rgb 130 32 144
+3006.09c  -0.0003 % Li-6
+3007.09c -17.9011 % Li-7
+4009.09c  -2.2555 % Be-9
+9019.09c -45.1698 % F-19
+92235.09c  -0.5700 % U-235
+92238.09c -44.1033 % U-238
+
+%  NUCLEAR GRAPHITE: Natural concentration of carbon
+%  DENSITY: 1.82 G/CC
+mat graphite -1.82 moder graph 6000
+rgb 130 130 130
+6000.09c 99.99982
+5011.09c 0.00015
+5010.09c 3e-05
+
+%  THERMAL SCATTERING LIBRARY FOR GRAPHITE
+therm graph gre7.08t
+
+% boundary condition
+set bc 3
+
+set pop 10000 250 50
+set acelib "sss_endfb7u.sssdir"
+set declib "sss_endfb7.dec"
+set nfylib "sss_endfb7.nfy"
+
+% analog reaction rate
+set arr 2
+
+%plot 3 1500 1500
+%mesh 3 1500 150
+
+%___________Reprocessing/depletion___________
+%Firstly, you need some extra materials to do depletion and reprocessing correctly.
+
+%stockpile of extra U 10% enriched
+mat U_stock -3.353 burn 1 vol 1e8
+rgb 130 32 144
+3006.09c  -0.0003 % Li-6
+3007.09c -17.9011 % Li-7
+4009.09c  -2.2555 % Be-9
+9019.09c -45.1698 % F-19
+92235.09c  -4.4673 % U-235
+92238.09c -40.2060 % U-238
+
+%tanks for offgases
+mat offgastankcore 0.0007 burn 1 vol 1e6
+2004.09c 1
+
+% overflow tank
+mat overflow 0.0007 burn 1 vol 1e8
+2004.09c 1
+
+%_______mass flow definitions______
+
+mflow U_in
+all 3.5125e-09
+
+mflow offgasratecore
+Ne 1e-2
+Ar 1e-2
+He 1e-2
+Kr 1e-2
+Xe 1e-2
+Rn 1e-2
+
+% need to account for the increase in vloume with refueling
+mflow over
+all 3.5125e-09
+
+set pcc 0 %predictor-corrector must be turned off to use depletion
+set gcu -1 %turning off group constant generation hastens the calculation
+set depmtx 1 %dumps depletion matrices if needed. should be one per burnt material.
+
+%syntax:
+% rc <from_mat> <to_mat> <mflow> <setting> where setting is either 0, 1 or 2.
+
+rep source_rep
+rc U_stock FLiBeU U_in 0
+rc FLiBeU offgastankcore offgasratecore 1
+rc FLiBeU overflow over 1
+
+set printm 1 %prints out isotopic compositions of burnt materials over depletion
+set powdens 2E-2 % power density in [kW/g] 
+
+dep
+pro source_rep
+daystep
+0.0208 0.0208 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7
+7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7
+%7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7
+%7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7
+%7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7
+%burn up for one year
+
+set inventory
+1
+30 31 32 33 34 35 36 37 38 39
+40 41 42 43 44 45 46 47 48 49
+50 51 52 53 54 55 56 57 58 59
+60 61 62 63 64 65 66 67 68 69
+70 71 72 86
+actinides
